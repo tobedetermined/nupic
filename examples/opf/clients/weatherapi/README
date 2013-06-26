@@ -1,0 +1,1 @@
+This example is a small tweak on the hotgym example where instead of reading values from a file, it polls a public weather API. The values are written to an 'output.csv' file together with the predicted value. The polling is set to a 15sec interval. The weather data doesn't change very much so this is mainly a proof of concept, without much useful prediction value.
