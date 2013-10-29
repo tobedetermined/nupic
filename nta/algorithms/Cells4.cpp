@@ -25,6 +25,7 @@
 #include <iomanip>
 #include <vector>
 #include <iostream>
+#include <limits>  // numeric_limits
 #include <set>
 #include <sstream>
 
@@ -295,7 +296,7 @@ void Cells4::inferBacktrack(const std::vector<UInt> & activeColumns)
   // How much input history have we accumulated? Is it enough to backtrack?
   // The current input is always at the end of self._prevInfPatterns, but
   // it is also evaluated as a potential starting point
-  if (_prevInfPatterns.size() == 0) return;
+  if (_prevInfPatterns.empty()) return;
 
   TIMER(infBacktrackTimer.start());
 
@@ -377,7 +378,6 @@ void Cells4::inferBacktrack(const std::vector<UInt> & activeColumns)
       badPatterns.push_back(startOffset);
     }
     else {
-      candConfidence = totalConfidence;
       candStartOffset = startOffset;
       
       // If we got to here, startOffset is a candidate starting point.
@@ -687,7 +687,7 @@ UInt Cells4::getCellForNewSegment(UInt colIdx)
   }
 
   // If we found one, return with it
-  if (candidateCellIdxs.size() > 0)
+  if (!candidateCellIdxs.empty())
   {
     candidateCellIdx =
                 candidateCellIdxs[_rng.getUInt32(candidateCellIdxs.size())];
@@ -1726,9 +1726,6 @@ void Cells4::adaptSegment(const SegmentUpdate& update)
       std::cout << std::endl;
     }
 
-#if 0                                       // Art testing 2011-08-14; this call appears unnecessary
-    _learnActivity.add(cellIdx, synapses.size());
-#endif
 
     addOutSynapses(cellIdx, segIdx, update.begin(), update.end());
 
@@ -1750,7 +1747,7 @@ void Cells4::_rebalance()
   _nIterationsSinceRebalance = _nLrnIterations;
 
   for (UInt cellIdx = 0; cellIdx != _nCells; ++cellIdx) {
-    if (_cells[cellIdx].size() > 0) {
+    if (!_cells[cellIdx].empty()) {
       _cells[cellIdx].rebalanceSegments();
     }
   }
@@ -1951,6 +1948,7 @@ void Cells4::save(std::ostream& outStream) const
 void Cells4::saveToFile(std::string filePath) const
 {
   OFStream outStream(filePath.c_str(), std::ios_base::out | std::ios_base::binary);
+  outStream.precision(std::numeric_limits<double>::digits10 + 1);
   save(outStream);
 }
 
@@ -2103,7 +2101,7 @@ bool Cells4::invariants(bool verbose) const
     // column has no incoming segments
     for (UInt colIdx = 0; colIdx != _nColumns; ++colIdx) {
       UInt cellIdx = colIdx * _nCellsPerCol;
-      consistent &= (_cells[cellIdx].size() == 0);
+      consistent &= (_cells[cellIdx].empty());
     }
 
     if (!consistent && verbose) {
@@ -2583,7 +2581,7 @@ Cells4::chooseCellsToLearnFrom(UInt cellIdx, UInt segIdx,
   // if we found fewer cells than requested, return all of them
   // The new ones are sorted, but we need to sort again if there were
   // any old ones.
-  bool fSortNeeded = srcCells.size() > 0;   // may be overridden below
+  bool fSortNeeded = !srcCells.empty();   // may be overridden below
   if (nbrCells <= nSynToAdd) {
     // since we use all of vecPruned, we don't need a random number
     srcCells.reserve(nbrCells + srcCells.size());
@@ -2787,19 +2785,14 @@ std::ostream& operator<<(std::ostream& outStream, const Cells4& cells)
  */
 void Cells4::computeForwardPropagation(CStateIndexed& state)
 {
-  ticks z1, z2, p1, p2;
-
   // Zero out previous values
   // Using memset is quite a bit faster on laptops, but has almost no effect
   // on Neo15!
-  z1 = getticks();
   _learnActivity.reset();
-  z2 = getticks();
 
   // Compute cell and segment activity by following forward propagation
   // links from each source cell.  _cellActivity will be set to the total
   // activity coming into a cell.
-  p1 = getticks();
 
   // process all cells that are on in the current state
   static std::vector<UInt> vecCellBuffer ;
@@ -2813,8 +2806,6 @@ void Cells4::computeForwardPropagation(CStateIndexed& state)
       _learnActivity.increment(dstCellIdx, dstSegIdx);
     }
   }
-  p2 = getticks();
-
 }
 
 #if SOME_STATES_NOT_INDEXED
@@ -2831,19 +2822,14 @@ void Cells4::computeForwardPropagation(CStateIndexed& state)
  */
 void Cells4::computeForwardPropagation(CState& state)
 {
-  ticks z1, z2, p1, p2;
-
   // Zero out previous values
   // Using memset is quite a bit faster on laptops, but has almost no effect
   // on Neo15!
-  z1 = getticks();
   _inferActivity.reset();
-  z2 = getticks();
 
   // Compute cell and segment activity by following forward propagation
   // links from each source cell.  _cellActivity will be set to the total
   // activity coming into a cell.
-  p1 = getticks();
 #ifdef NTA_PLATFORM_darwin86
   const UInt multipleOf8 = 8 * (_nCells/8);
   UInt i;
@@ -2901,8 +2887,6 @@ void Cells4::computeForwardPropagation(CState& state)
     }
   }
 #endif // NTA_PLATFORM_darwin86
-  p2 = getticks();
-
 }
 #endif  // SOME_STATES_NOT_INDEXED
 

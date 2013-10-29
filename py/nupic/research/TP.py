@@ -430,7 +430,7 @@ class TP(ConsolePrinterMixin):
         if len(a) != len(b):
           diff.append((keys + (k, 'len'), len(a), len(b)))
         elif not numpy.array_equal(a, b):
-          diff.append((keys + (k), a, b))
+          diff.append((keys + (k,), a, b))
         #for i in xrange(len(a)):
         #  toCheck.append((keys + (k, i), a[i], b[i]))
       elif isinstance(a, Random):
@@ -1175,6 +1175,16 @@ class TP(ConsolePrinterMixin):
     #         type 'float32' up front.
     return self.infActiveState['t'].reshape(-1).astype('float32')
 
+
+  def getPredictedState(self):
+    """
+    Return a numpy array, predictedCells, representing the current predicted
+    state.
+    
+    predictedCells[c][i] represents the state of the i'th cell in the c'th
+    column.
+    """
+    return self.infPredictedState['t']
 
   def predict(self, nSteps):
     """

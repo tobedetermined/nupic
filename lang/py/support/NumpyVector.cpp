@@ -26,12 +26,11 @@
 /** @file
  */
 
-// #include <nta/python/cpplibs/Python.h>
-
 
 
 //#define NO_IMPORT_ARRAY
-#include <python2.6/Python.h>
+#include <Python.h>
+
 #include <numpy/arrayobject.h>
 
 // workaround for change in numpy config.h for python2.5 on windows
@@ -44,7 +43,6 @@
 #define SIZEOF_DOUBLE 64
 #endif
 
-// #include <nta/python/cpplibs/types.hpp>
 #include <lang/py/support/NumpyVector.hpp>
 
 #include <stdexcept>
@@ -80,7 +78,7 @@ NTA_DEF_NUMPY_DTYPE_TRAIT(size_t, PyArray_UINT32);
 
 NTA_DEF_NUMPY_DTYPE_TRAIT(nta::Int32, PyArray_INT32);
 
-#ifndef NTA_PLATFORM_linux32
+#if !defined(NTA_PLATFORM_linux32) && !defined(NTA_PLATFORM_linux32arm) 
 // size_t (above) is the same as UInt32 on linux32
 NTA_DEF_NUMPY_DTYPE_TRAIT(nta::UInt32, PyArray_UINT32);
 #endif
@@ -212,7 +210,7 @@ int NumpyArray::stride(int i) const
 PyObject *NumpyArray::forPython() {
   if(p_) {
     Py_XINCREF(p_);
-    PyObject *toReturn = PyArray_Return(p_);
+    PyObject *toReturn = PyArray_Return((PyArrayObject *)p_);
     return toReturn;
   }
   else return 0;

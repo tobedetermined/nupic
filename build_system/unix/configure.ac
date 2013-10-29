@@ -27,6 +27,7 @@ AC_INIT([NuPIC], 1.0.0)
 # This directory is where libtoolize and automake put their scripts
 # must come before AM_INIT_AUTOMAKE
 AC_CONFIG_AUX_DIR([build_system/unix])
+AC_LANG([C++])
 
 # Find out what system we're on.
 # Must be called before AM_INIT_AUTOMAKE
@@ -40,7 +41,7 @@ AC_CANONICAL_SYSTEM
 # nostdinc -- don't include standard -I options
 # subdir-objects -- put objects into subdirs. Without this we get very long .o names
 
-AM_INIT_AUTOMAKE([foreign no-dist no-installinfo no-installman nostdinc subdir-objects])
+AM_INIT_AUTOMAKE([foreign no-dist no-installinfo no-installman subdir-objects])
 
 # Gets lots of stuff off of the command line
 # None of our source code actually uses this header file.
@@ -75,8 +76,8 @@ AC_PROG_LIBTOOL
 
 AC_PROG_INSTALL
 
-if test "x$PYTHON_VERSION" != "x2.6" ; then
-    AC_MSG_ERROR([Python 2.6 is required. You have version $PYTHON_VERSION])
+if [[ "$PYTHON_VERSION" != "2.6" ]] && [[ "$PYTHON_VERSION" != "2.7" ]]; then
+    AC_MSG_ERROR([Python 2.6 or 2.7 is required. You have version $PYTHON_VERSION])
 fi
 
 #
@@ -85,12 +86,21 @@ fi
 PYTHON_SYS_PREFIX=`$PYTHON -c "import sys; print sys.prefix"`
 AC_MSG_NOTICE([Python sys prefix is $PYTHON_SYS_PREFIX])
 
-PYTHON_SYS_LIB="$PYTHON_SYS_PREFIX/lib"
+PYTHON_SYS_LIB="$PYTHON_SYS_PREFIX/lib/python$PYTHON_VERSION"
 AC_MSG_NOTICE([Python lib dir is $PYTHON_SYS_LIB])
 AC_SUBST(PYTHON_SYS_LIB)
 
-PYTHON_SYS_INCLUDE="$PYTHON_SYS_PREFIX/include"
+PYTHON_SYS_INCLUDE="$PYTHON_SYS_PREFIX/include/python$PYTHON_VERSION"
 AC_SUBST(PYTHON_SYS_INCLUDE)
+
+
+### Check for Python modules ###
+
+# pip is used for python modules
+AC_CHECK_PROG(havepip,pip,yes,no)
+AM_CONDITIONAL(HAVE_PIP, [test x$havepip = xyes])
+AM_COND_IF(HAVE_PIP, ,AC_MSG_ERROR([Error: pip is needed for Python dependencies.]))
+
 
 #
 # Defaults for variables that may be overridded per-platform.
@@ -108,9 +118,9 @@ AC_MSG_CHECKING([platform])
 case "${target}" in
      *darwin*)
         nta_platform="darwin64"
-        nta_platform_cxxflags="-fPIC -DPIC -Wnewline-eof -m64"
+        nta_platform_cxxflags="-fPIC -DPIC -m64"
         # link against the system version of python (64-bits)
-        nta_platform_python_libs="-F/System/Library/Frameworks -framework Python"
+        nta_platform_python_libs=`python${PYTHON_VERSION}-config --ldflags`
         nta_platform_env1="MACOSX_DEPLOYMENT_TARGET=10.7"
         AC_MSG_RESULT([darwin on x86_64])
         nta_platform_asflags=""
@@ -121,15 +131,29 @@ case "${target}" in
         nta_platform_pyldflags="-bundle -undefined dynamic_lookup -fPIC"
         nta_platform_pyembed=""
 	;;
-     i*86-*-*linux*)
-        nta_platform="linux32"
-        nta_platform_cxxflags="-fPIC -DPIC -ffloat-store"
+     armv6l-*-*linux*)
+        nta_platform="linux32arm"
+        nta_platform_cxxflags="-fPIC -DPIC -ffloat-store -D_PY27"
         nta_platform_asflags=""
         nta_platform_debug_flag="-g"
         nta_platform_ldflags="-static-libgcc"
 	nta_platform_libs="-lm -lstdc++ -lpthread -ldl -lutil -lrt -lcrypt"
 	nta_platform_mpi_extra_libs="-lrt"
 	nta_platform_python_libs="-lpython\$(PYTHON_VERSION)"
+	nta_platform_testldflags="-Wl,-R\$(libdir)/test"
+	nta_platform_pyldflags="-pthread -shared"
+	nta_platform_pyembed="-Wl,--export-dynamic"
+	AC_MSG_RESULT([linux32 on arm])
+	;;
+     i*86-*-*linux*)
+        nta_platform="linux32"
+        nta_platform_cxxflags="-fPIC -DPIC -ffloat-store"
+        nta_platform_asflags=""
+        nta_platform_debug_flag="-g"
+        nta_platform_ldflags="-static-libgcc"
+	nta_platform_libs="-lm -lstdc++ -lpthread -ldl -lutil -lrt"
+	nta_platform_mpi_extra_libs="-lrt"
+	nta_platform_python_libs=`python${PYTHON_VERSION}-config --ldflags`
 	nta_platform_testldflags="-Wl,-R\$(libdir)/test"
 	nta_platform_pyldflags="-pthread -shared"
 	nta_platform_pyembed="-Wl,--export-dynamic"
@@ -142,9 +166,9 @@ case "${target}" in
 	nta_platform_debug_flag="-g"
 	# nta_platform_ldflags="-static-libgcc"
 	# pthread needed by libapr-1
-	nta_platform_libs='-lm -lpthread -ldl -lutil -lcrypt -lstdc++'
+	nta_platform_libs='-lm -lpthread -ldl -lutil -lstdc++'
 	nta_platform_mpi_extra_libs="-lrt"
-	nta_platform_python_libs="-lpython\$(PYTHON_VERSION)"
+	nta_platform_python_libs=`python${PYTHON_VERSION}-config --ldflags`
 	nta_platform_testldflags="-Wl,-R\$(libdir)/test"
 	nta_platform_pyldflags="-pthread -shared"
 	nta_platform_pyembed="-Wl,--export-dynamic"
@@ -184,7 +208,7 @@ if test -z "$SWIG" ; then
    SWIG='echo "Error: SWIG is not installed. Error in NuPIC source installation"'
 fi
 
-SWIG_LIB=${extdir}/share/swig/1.3.36
+SWIG_LIB=${srcdir}/external/common/share/swig/1.3.36
 AC_SUBST([SWIG_LIB])
 
 AC_MSG_NOTICE([SWIG executable is '$SWIG'])
@@ -255,18 +279,6 @@ else
 fi
 
 AM_CONDITIONAL(NTA_PROFILING_ENABLED, test "x$enable_profiling" = "xyes")
-
-#
-# Workaround for possible gcc 4.1.1 compiler bug. 
-# Symptom is a "lowering visibility" warning in ConstraintParser.cpp related to boost
-# Could also be a boost 1.37 bug. 
-gcc_version=`$CXX --version | head -1 | awk '{print $3}'`
-if test "x$gcc_version" = "x4.1.1" -o "x$gcc_version" = "x4.1.2" 
-then
-  echo "Adding -Wno-attributes workaround for gcc 4.1.1"
-  nta_platform_cxxflags="$nta_platform_cxxflags -Wno-attributes"  
-fi
-
 
 
 

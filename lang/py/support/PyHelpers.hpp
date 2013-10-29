@@ -29,8 +29,9 @@
 // must be #included first and transitively every .hpp file that 
 // #includes directly or indirectly PyHelpers.hpp must be #included
 // first.
-#include <python2.6/Python.h>
-#include <python2.6/frameobject.h>
+#include <Python.h>
+#include <frameobject.h>
+
 #include <nta/utils/Log.hpp>
 #include <iostream>
 #include <fstream>

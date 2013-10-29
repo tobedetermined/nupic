@@ -35,12 +35,14 @@
 #include <nta/ntypes/BundleIO.hpp>
 #include <nta/engine/YAMLUtils.hpp>
 #include <nta/engine/TestNode.hpp>
-#include <nta/regions/SpatialPoolerNode.hpp>
-#include <nta/regions/TemporalPoolerNode.hpp>
 #include <nta/regions/VectorFileEffector.hpp>
 #include <nta/regions/VectorFileSensor.hpp>
 #include <nta/utils/Log.hpp>
 #include <nta/utils/StringUtils.hpp>
+
+// from http://stackoverflow.com/a/9096509/1781435
+#define stringify(x)  #x
+#define expand_and_stringify(x) stringify(x)
 
 // Path from site-packages to packages that contain NuPIC Python regions
 const size_t packages_length = 2;
@@ -131,6 +133,8 @@ namespace nta
 #elif defined(NTA_PLATFORM_linux64)
       const char * filename = "libcpp_region.so";
 #elif defined(NTA_PLATFORM_linux32)
+      const char * filename = "libcpp_region.so";
+#elif defined(NTA_PLATFORM_linux32arm)
       const char * filename = "libcpp_region.so";
 #elif defined(NTA_PLATFORM_win32)
       const char * filename = "cpp_region.dll";
@@ -263,8 +267,8 @@ static std::string getPackageDir(const std::string& rootDir, const std::string &
   size_t pos = p.find(".");
   if (pos != std::string::npos)
     p.replace(p.find("."), 1, "/");
-  
-  return Path::join(rootDir, "lib/python2.6/site-packages", p);
+
+  return Path::join(rootDir, "lib/python" expand_and_stringify(NTA_PYTHON_SUPPORT) "/site-packages", p);
 }
 
 // This function creates either a NuPIC 2 or NuPIC 1 Python node 
@@ -362,12 +366,6 @@ RegionImpl* RegionImplFactory::createRegionImpl(const std::string nodeType,
   if (nodeType == "TestNode")
   {
     mn = new TestNode(vm, region);
-  } else if (nodeType == "SpatialPoolerNode")
-  {
-    mn = new SpatialPoolerNode(vm, region);
-  } else if (nodeType == "TemporalPoolerNode")
-  {
-    mn = new TemporalPoolerNode(vm, region);
   } else if (nodeType == "VectorFileEffector")
   {
     mn = new VectorFileEffector(vm, region);
@@ -398,12 +396,6 @@ RegionImpl* RegionImplFactory::deserializeRegionImpl(const std::string nodeType,
   if (nodeType == "TestNode")
   {
     mn = new TestNode(bundle, region);
-  } else if (nodeType == "SpatialPoolerNode")
-  {
-    mn = new SpatialPoolerNode(bundle, region);
-  } else if (nodeType == "TemporalPoolerNode")
-  {
-    mn = new TemporalPoolerNode(bundle, region);
   } else if (nodeType == "VectorFileEffector")
   {
     mn = new VectorFileEffector(bundle, region);
@@ -474,14 +466,6 @@ Spec * RegionImplFactory::getSpec(const std::string nodeType)
   {
     ns = TestNode::createSpec();
   } 
-  else if (nodeType == "SpatialPoolerNode")
-  {
-    ns = SpatialPoolerNode::createSpec();
-  } 
-  else if (nodeType == "TemporalPoolerNode")
-  {
-    ns = TemporalPoolerNode::createSpec();
-  }
   else if (nodeType == "VectorFileEffector")
   {
     ns = VectorFileEffector::createSpec();
